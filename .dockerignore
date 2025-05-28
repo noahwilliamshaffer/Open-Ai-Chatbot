@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Node.js
+node_modules
+npm-debug.log
+
+# Environment files
+.env*
+api-key.txt
+
+# Optional: Keep Firebase config outside the container
+# firebase-config.js
+
+# Logs
+logs
+*.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md 
