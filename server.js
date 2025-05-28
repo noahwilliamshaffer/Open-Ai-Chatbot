@@ -154,14 +154,12 @@ app.get('/api/completions/:id', async (req, res) => {
   }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`API endpoints:`);
-  console.log(`- POST /api/completions`);
-  console.log(`- GET  /api/completions`);
-  console.log(`- GET  /api/completions/search?term=search_term`);
-  console.log(`- GET  /api/completions/:id`);
-}); 
+// Only start the server if this file is run directly
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+module.exports = app; 
