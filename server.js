@@ -1,11 +1,16 @@
 const express = require('express');
 const fs = require('fs');
 const OpenAI = require('openai');
-const firestore = require('./firestore');
 
 // Initialize app
 const app = express();
 app.use(express.json());
+
+// Simple in-memory storage
+const storage = {
+  completions: new Map(),
+  nextId: 1
+};
 
 // Helper function to load API key
 function loadApiKey() {
@@ -54,8 +59,10 @@ app.post('/api/completions', async (req, res) => {
     
     const completionText = completion.choices[0].message.content;
     
-    // Store in Firestore
+    // Store in memory
+    const id = storage.nextId++;
     const completionData = {
+      id,
       prompt,
       completion: completionText,
       model: completion.model,
@@ -65,10 +72,10 @@ app.post('/api/completions', async (req, res) => {
       timestamp: new Date()
     };
     
-    const storedCompletion = await firestore.addDocument('completions', completionData);
+    storage.completions.set(id, completionData);
     
     res.status(201).json({
-      id: storedCompletion.id,
+      id,
       prompt,
       completion: completionText,
       usage: {
@@ -91,8 +98,9 @@ app.get('/api/completions', async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : 5;
     
-    const sortBy = { field: 'timestamp', direction: 'desc' };
-    const completions = await firestore.queryDocuments('completions', [], sortBy, limit);
+    const completions = Array.from(storage.completions.values())
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
     
     res.status(200).json(completions);
   } catch (error) {
@@ -113,12 +121,8 @@ app.get('/api/completions/search', async (req, res) => {
       return res.status(400).json({ error: 'Search term is required' });
     }
     
-    // Search for completions
-    const allCompletions = await firestore.getAllDocuments('completions');
-    
-    const results = allCompletions.filter(doc => 
-      doc.prompt.toLowerCase().includes(term.toLowerCase())
-    );
+    const results = Array.from(storage.completions.values())
+      .filter(doc => doc.prompt.toLowerCase().includes(term.toLowerCase()));
     
     res.status(200).json(results);
   } catch (error) {
@@ -134,7 +138,7 @@ app.get('/api/completions/search', async (req, res) => {
 app.get('/api/completions/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const completion = await firestore.getDocument('completions', id);
+    const completion = storage.completions.get(parseInt(id));
     
     if (!completion) {
       return res.status(404).json({ error: 'Completion not found' });
